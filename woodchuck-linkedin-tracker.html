@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Woodchuck LinkedIn Outreach Tracker</title>
+<style>
+  :root{
+    --wood-dark:#4a3626;--wood:#6b4a2f;--wood-light:#8a6642;--tan:#c8a97e;
+    --cream:#f7f1e7;--paper:#fffdf9;--line:#e4d8c5;
+    --green:#3f7d4e;--green-bg:#e5f0e5;--amber:#b7791f;--amber-bg:#fbf0d9;
+    --blue:#2f6fb0;--blue-bg:#e4eef8;--purple:#6b4a9e;--purple-bg:#ece4f6;
+    --grey:#8a8172;--grey-bg:#eee9df;
+    --shadow:0 1px 3px rgba(74,54,38,.12),0 6px 18px rgba(74,54,38,.08);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--cream);color:var(--wood-dark);line-height:1.45}
+  header{background:linear-gradient(135deg,var(--wood) 0%,var(--wood-dark) 100%);color:var(--cream);padding:22px 28px;box-shadow:var(--shadow)}
+  header h1{margin:0;font-size:22px;letter-spacing:.2px}
+  header p{margin:4px 0 0;font-size:13px;opacity:.85}
+  .wrap{max-width:1080px;margin:0 auto;padding:24px 20px 60px}
+
+  .stats{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:22px}
+  .stat{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:12px 18px;box-shadow:var(--shadow);flex:1;min-width:110px}
+  .stat .n{font-size:26px;font-weight:700}
+  .stat .l{font-size:12px;color:var(--grey);text-transform:uppercase;letter-spacing:.5px}
+
+  .card{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:var(--shadow);margin-bottom:18px}
+  .card h2{margin:0 0 4px;font-size:15px;text-transform:uppercase;letter-spacing:.6px;color:var(--wood)}
+  .card .sub{margin:0 0 14px;font-size:12px;color:var(--grey)}
+  .field label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--grey);margin-bottom:4px}
+  input,select{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:9px;font-size:14px;background:#fff;color:var(--wood-dark);font-family:inherit}
+  input:focus,select:focus{outline:none;border-color:var(--tan);box-shadow:0 0 0 3px rgba(200,169,126,.25)}
+  button{font-family:inherit;cursor:pointer;border:none;border-radius:9px;font-size:14px;font-weight:600}
+  .btn-add{background:var(--wood);color:var(--cream);padding:10px 20px;white-space:nowrap;transition:background .15s}
+  .btn-add:hover{background:var(--wood-dark)}
+  .btn-add.alt{background:var(--purple)}
+  .btn-add.alt:hover{background:#523579}
+
+  .form-grid{display:grid;grid-template-columns:1.1fr 1.1fr 1.6fr .9fr auto;gap:10px;align-items:end}
+  .form-grid.co{grid-template-columns:1.2fr 1.6fr 1.6fr auto}
+
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:22px 0 16px}
+  .tab{background:var(--paper);border:1px solid var(--line);color:var(--wood);padding:8px 16px;border-radius:999px;font-size:13px;font-weight:600;transition:all .15s}
+  .tab:hover{border-color:var(--tan)}
+  .tab.active{background:var(--wood);color:var(--cream);border-color:var(--wood)}
+  .tab .count{opacity:.7;margin-left:5px;font-weight:500}
+
+  .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+  .toolbar input[type=search]{flex:1;min-width:200px}
+  .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--wood);padding:9px 14px}
+  .btn-ghost:hover{border-color:var(--tan)}
+
+  table{width:100%;border-collapse:collapse;background:var(--paper);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+  thead th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--grey);padding:12px 14px;border-bottom:2px solid var(--line);background:var(--cream)}
+  tbody td{padding:12px 14px;border-bottom:1px solid var(--line);font-size:14px;vertical-align:middle}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:#fbf7f0}
+  .name{font-weight:600}
+  .company{color:var(--wood-light)}
+  a.li{color:var(--blue);text-decoration:none;font-size:13px}
+  a.li:hover{text-decoration:underline}
+
+  .status-select{padding:6px 10px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid transparent;cursor:pointer;-webkit-appearance:none;appearance:none;padding-right:26px;background-repeat:no-repeat;background-position:right 8px center;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23555' stroke-width='3'><path d='M6 9l6 6 6-6'/></svg>")}
+  .st-pending{background:var(--amber-bg);color:var(--amber)}
+  .st-connected{background:var(--blue-bg);color:var(--blue)}
+  .st-messaged{background:var(--green-bg);color:var(--green)}
+  .st-hold{background:var(--grey-bg);color:var(--grey)}
+  .st-queued{background:var(--amber-bg);color:var(--amber)}
+  .st-researching{background:var(--purple-bg);color:var(--purple)}
+  .st-done{background:var(--green-bg);color:var(--green)}
+
+  .row-actions{white-space:nowrap;text-align:right}
+  .icon-btn{background:transparent;color:var(--grey);padding:4px 8px;font-size:15px;border-radius:7px}
+  .icon-btn:hover{background:var(--grey-bg);color:var(--wood-dark)}
+  .del:hover{background:#f7dede;color:#b23b3b}
+
+  .empty{text-align:center;padding:44px 20px;color:var(--grey);font-size:14px}
+  .note{font-size:12px;color:var(--grey);margin-top:14px}
+  .note code{background:var(--grey-bg);padding:1px 5px;border-radius:4px}
+  .banner{background:var(--purple-bg);border:1px solid #d9c9ee;color:#4a3570;border-radius:12px;padding:12px 16px;font-size:13px;margin-bottom:18px}
+  .banner b{color:var(--purple)}
+  .hidden{display:none}
+
+  @media (max-width:760px){
+    .form-grid,.form-grid.co{grid-template-columns:1fr 1fr}
+    .btn-add{grid-column:1/-1}
+    .hide-sm{display:none}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>🪵 Woodchuck LinkedIn Outreach Tracker</h1>
+  <p>Add people or whole companies to prospect — track connections and who's been messaged.</p>
+</header>
+
+<div class="wrap">
+  <div class="stats" id="stats"></div>
+
+  <div class="card">
+    <h2>Add a person</h2>
+    <p class="sub">Someone you already found — I'll send the connection request and auto-message them when they accept.</p>
+    <div class="form-grid">
+      <div class="field"><label>Name</label><input id="p-name" placeholder="Jane Doe"></div>
+      <div class="field"><label>Company</label><input id="p-company" placeholder="Acme Distillery"></div>
+      <div class="field"><label>LinkedIn URL</label><input id="p-url" placeholder="https://www.linkedin.com/in/..."></div>
+      <div class="field"><label>Status</label>
+        <select id="p-status">
+          <option value="pending">Request sent</option>
+          <option value="connected">Connected</option>
+          <option value="messaged">Messaged</option>
+          <option value="hold">On hold</option>
+        </select>
+      </div>
+      <button class="btn-add" onclick="addPerson()">+ Add person</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Add a company to prospect</h2>
+    <p class="sub">Drop a company's website or LinkedIn page. I'll find the decision-makers worth talking to, send requests, and auto-message them on accept.</p>
+    <div class="form-grid co">
+      <div class="field"><label>Company name</label><input id="c-name" placeholder="Acme Distillery"></div>
+      <div class="field"><label>Website or LinkedIn company URL</label><input id="c-url" placeholder="acme.com  or  linkedin.com/company/acme"></div>
+      <div class="field"><label>Target persona</label>
+        <select id="c-persona" onchange="personaPreset()">
+          <option value="ICP: founders, brand/marketing, ecommerce, ops/packaging, partnerships">ICP — Woodchuck decision-makers</option>
+          <option value="Founder, Owner, CEO, President">Founders &amp; owners</option>
+          <option value="Head of Marketing, Brand, Creative Director, CMO">Marketing / brand leaders</option>
+          <option value="Head of Ecommerce, DTC, Retail, Head of Growth">Ecommerce / DTC leaders</option>
+          <option value="Head of Operations, Packaging, Supply Chain, Procurement">Ops / packaging / procurement</option>
+          <option value="Head of Partnerships, Influencer, Events, Brand Partnerships">Partnerships / influencer / events</option>
+          <option value="__custom">Custom…</option>
+        </select>
+      </div>
+      <button class="btn-add alt" onclick="addCompany()">+ Add company</button>
+    </div>
+    <div class="field" id="c-custom-wrap" style="margin-top:10px;display:none">
+      <label>Custom target roles / seniority</label><input id="c-target" placeholder="e.g. VP Marketing, Head of Brand, Founder">
+    </div>
+  </div>
+
+  <div class="banner">
+    <b>How prospecting works (Apollo + PhantomBuster style):</b> Adding a company queues it below. Like Apollo, Claude targets by <b>persona</b> — job title + seniority + function — to surface the real decision-makers. Like PhantomBuster, the finding and connecting run on your live, logged-in LinkedIn (a webpage can't do that itself), and the daily scheduled task auto-sends each personalized message the moment someone accepts. Say <b>"work the company queue"</b> and Claude researches each queued company, shows you the decision-makers it found, and adds them to the People list.
+  </div>
+
+  <div class="tabs" id="tabs"></div>
+
+  <div class="toolbar">
+    <input type="search" id="search" placeholder="Search..." oninput="render()">
+    <button class="btn-ghost" onclick="exportCSV()">⬇ Export CSV</button>
+  </div>
+
+  <table id="people-table">
+    <thead><tr>
+      <th>Name</th><th class="hide-sm">Company</th><th class="hide-sm">LinkedIn</th><th>Status</th><th></th>
+    </tr></thead>
+    <tbody id="p-body"></tbody>
+  </table>
+
+  <table id="co-table" class="hidden">
+    <thead><tr>
+      <th>Company</th><th class="hide-sm">Website / LinkedIn</th><th class="hide-sm">Target roles</th><th>Status</th><th></th>
+    </tr></thead>
+    <tbody id="c-body"></tbody>
+  </table>
+
+  <p class="note">Everything is saved locally in this browser (<code>localStorage</code>). Bookmark this file. Use the status dropdown to move people through <b>Request sent → Connected → Messaged</b>, and companies through <b>Queued → Researching → Done</b>.</p>
+</div>
+
+<script>
+const PKEY='woodchuck_li_people_v2';
+const CKEY='woodchuck_li_companies_v2';
+
+const PSTATUS={
+  pending:{label:'Request sent',cls:'st-pending'},
+  connected:{label:'Connected',cls:'st-connected'},
+  messaged:{label:'Messaged',cls:'st-messaged'},
+  hold:{label:'On hold',cls:'st-hold'}
+};
+const CSTATUS={
+  queued:{label:'Queued',cls:'st-queued'},
+  researching:{label:'Researching',cls:'st-researching'},
+  done:{label:'Done',cls:'st-done'}
+};
+
+const SEED_PEOPLE=[
+  {name:'Robert Cordes',company:'Garrison Brothers Distillery',url:'https://www.linkedin.com/in/robertcordes/',status:'pending'},
+  {name:'Mark Borchetta',company:'Big Machine Distillery (fmr EVP)',url:'https://www.linkedin.com/in/markborchetta/',status:'pending'},
+  {name:'Tim Sparapani',company:'Blue Run Spirits / Coors Spirits',url:'https://www.linkedin.com/in/tim-sparapani-0397734/',status:'pending'},
+  {name:'Ryan Beltran',company:'Original Grain',url:'https://www.linkedin.com/in/ryan-beltran/',status:'pending'},
+  {name:'Maegan Dec',company:"Hilliard's Chocolates",url:'https://www.linkedin.com/in/maeganemccarthy/',status:'pending'},
+  {name:'Malte Barnekow',company:'Four Walls Whiskey',url:'https://www.linkedin.com/in/maltebarnekow/',status:'pending'},
+  {name:'Colin Spoelman',company:'Kings County Distillery',url:'https://www.linkedin.com/in/spoelman/',status:'pending'},
+  {name:'Roland Murphy',company:'RGM Watch Co.',url:'https://www.linkedin.com/in/roland-murphy-5298aa41/',status:'pending'},
+  {name:'Anna Bario',company:'Bario Neal',url:'https://www.linkedin.com/in/anna-bario-4742a8234/',status:'pending'},
+  {name:'Reggie Milligan',company:'Mantry.com',url:'https://www.linkedin.com/in/reggie-milligan-b49b842b/',status:'pending'},
+  {name:'Michael Arbanas',company:'Nosotros Tequila (Co-Founder/CFO)',url:'https://www.linkedin.com/in/michael-arbanas-79021196/',status:'pending'},
+  {name:'Ralph Herz',company:'Nosotros Tequila (COO)',url:'https://www.linkedin.com/in/ralphherz/',status:'pending'},
+  {name:'Chip Marks',company:'Nosotros Tequila (Dir. Marketing)',url:'https://www.linkedin.com/in/chipmarks/',status:'pending'},
+  {name:'Bill Bryant',company:'Biltwell Inc. (needs email to send)',url:'',status:'hold'}
+];
+
+let people=loadPeople();
+let companies=loadCompanies();
+let activeTab='all';
+
+function loadPeople(){
+  try{const r=localStorage.getItem(PKEY);if(r)return JSON.parse(r);}catch(e){}
+  const s=SEED_PEOPLE.map((p,i)=>({id:Date.now()+i,...p}));
+  localStorage.setItem(PKEY,JSON.stringify(s));return s;
+}
+function loadCompanies(){
+  try{const r=localStorage.getItem(CKEY);if(r)return JSON.parse(r);}catch(e){}
+  return [];
+}
+function savePeople(){localStorage.setItem(PKEY,JSON.stringify(people));}
+function saveCompanies(){localStorage.setItem(CKEY,JSON.stringify(companies));}
+
+function normUrl(u){u=u.trim();if(u&&!/^https?:\/\//i.test(u))u='https://'+u;return u;}
+
+function addPerson(){
+  const name=val('p-name'),company=val('p-company'),status=document.getElementById('p-status').value;
+  let url=normUrl(val('p-url'));
+  if(!name){alert('Add a name at least.');return;}
+  people.unshift({id:Date.now(),name,company,url,status});savePeople();
+  clear(['p-name','p-company','p-url']);document.getElementById('p-status').value='pending';
+  activeTab='all';render();
+}
+function personaPreset(){
+  const sel=document.getElementById('c-persona');
+  document.getElementById('c-custom-wrap').style.display = sel.value==='__custom' ? 'block':'none';
+}
+function addCompany(){
+  const name=val('c-name');let url=normUrl(val('c-url'));
+  const sel=document.getElementById('c-persona');
+  const target = sel.value==='__custom' ? val('c-target') : sel.value;
+  if(!name&&!url){alert('Add a company name or URL.');return;}
+  companies.unshift({id:Date.now(),name,url,target,status:'queued'});saveCompanies();
+  clear(['c-name','c-url','c-target']);sel.value=sel.options[0].value;personaPreset();
+  activeTab='companies';render();
+}
+
+function setP(id,v){const p=people.find(x=>x.id===id);if(p){p.status=v;savePeople();render();}}
+function setC(id,v){const c=companies.find(x=>x.id===id);if(c){c.status=v;saveCompanies();render();}}
+function delP(id){const p=people.find(x=>x.id===id);if(p&&confirm('Remove '+p.name+'?')){people=people.filter(x=>x.id!==id);savePeople();render();}}
+function delC(id){const c=companies.find(x=>x.id===id);if(c&&confirm('Remove '+(c.name||c.url)+'?')){companies=companies.filter(x=>x.id!==id);saveCompanies();render();}}
+
+function val(id){return document.getElementById(id).value.trim();}
+function clear(ids){ids.forEach(i=>document.getElementById(i).value='');}
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+function pcounts(){const c={all:people.length,pending:0,connected:0,messaged:0,hold:0};people.forEach(p=>{if(c[p.status]!==undefined)c[p.status]++;});return c;}
+
+function renderStats(){
+  const c=pcounts();
+  document.getElementById('stats').innerHTML=`
+    <div class="stat"><div class="n">${people.length}</div><div class="l">People</div></div>
+    <div class="stat"><div class="n" style="color:var(--amber)">${c.pending}</div><div class="l">Request sent</div></div>
+    <div class="stat"><div class="n" style="color:var(--blue)">${c.connected}</div><div class="l">Connected</div></div>
+    <div class="stat"><div class="n" style="color:var(--green)">${c.messaged}</div><div class="l">Messaged</div></div>
+    <div class="stat"><div class="n" style="color:var(--purple)">${companies.length}</div><div class="l">Companies queued</div></div>`;
+}
+
+function renderTabs(){
+  const c=pcounts();
+  const tabs=[['all','All people',people.length],['pending','Request sent',c.pending],['connected','Connected',c.connected],['messaged','Messaged',c.messaged],['hold','On hold',c.hold],['companies','Companies',companies.length]];
+  document.getElementById('tabs').innerHTML=tabs.map(([k,l,n])=>`<button class="tab ${activeTab===k?'active':''}" onclick="activeTab='${k}';render()">${l}<span class="count">${n}</span></button>`).join('');
+}
+
+function render(){
+  renderStats();renderTabs();
+  const q=document.getElementById('search').value.trim().toLowerCase();
+  const pTable=document.getElementById('people-table'),cTable=document.getElementById('co-table');
+
+  if(activeTab==='companies'){
+    pTable.classList.add('hidden');cTable.classList.remove('hidden');
+    let list=companies;if(q)list=list.filter(c=>((c.name||'')+' '+(c.url||'')).toLowerCase().includes(q));
+    const b=document.getElementById('c-body');
+    if(!list.length){b.innerHTML=`<tr><td colspan="5"><div class="empty">No companies queued. Add one above and Claude will find the decision-makers.</div></td></tr>`;return;}
+    b.innerHTML=list.map(c=>{
+      const opts=Object.entries(CSTATUS).map(([k,v])=>`<option value="${k}" ${c.status===k?'selected':''}>${v.label}</option>`).join('');
+      const link=c.url?`<a class="li" href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.url.replace(/^https?:\/\//,''))} ↗</a>`:'<span style="color:var(--grey)">—</span>';
+      return `<tr>
+        <td class="name">${esc(c.name)||'<span style="color:var(--grey)">(from URL)</span>'}</td>
+        <td class="hide-sm">${link}</td>
+        <td class="hide-sm company">${esc(c.target)||'<span style="color:var(--grey)">any decision-maker</span>'}</td>
+        <td><select class="status-select ${CSTATUS[c.status].cls}" onchange="setC(${c.id},this.value)">${opts}</select></td>
+        <td class="row-actions"><button class="icon-btn del" title="Remove" onclick="delC(${c.id})">🗑</button></td>
+      </tr>`;}).join('');
+    return;
+  }
+
+  cTable.classList.add('hidden');pTable.classList.remove('hidden');
+  let list=people.filter(p=>activeTab==='all'?true:p.status===activeTab);
+  if(q)list=list.filter(p=>(p.name+' '+p.company).toLowerCase().includes(q));
+  const b=document.getElementById('p-body');
+  if(!list.length){b.innerHTML=`<tr><td colspan="5"><div class="empty">Nobody here yet. Add a person above.</div></td></tr>`;return;}
+  b.innerHTML=list.map(p=>{
+    const opts=Object.entries(PSTATUS).map(([k,v])=>`<option value="${k}" ${p.status===k?'selected':''}>${v.label}</option>`).join('');
+    const link=p.url?`<a class="li" href="${esc(p.url)}" target="_blank" rel="noopener">Open profile ↗</a>`:'<span style="color:var(--grey);font-size:13px">—</span>';
+    return `<tr>
+      <td class="name">${esc(p.name)}</td>
+      <td class="company hide-sm">${esc(p.company)}</td>
+      <td class="hide-sm">${link}</td>
+      <td><select class="status-select ${PSTATUS[p.status].cls}" onchange="setP(${p.id},this.value)">${opts}</select></td>
+      <td class="row-actions"><button class="icon-btn del" title="Remove" onclick="delP(${p.id})">🗑</button></td>
+    </tr>`;}).join('');
+}
+
+function exportCSV(){
+  const rows=[['Type','Name','Company/URL','LinkedIn/Target','Status']];
+  people.forEach(p=>rows.push(['Person',p.name,p.company,p.url,PSTATUS[p.status].label]));
+  companies.forEach(c=>rows.push(['Company',c.name,c.url,c.target,CSTATUS[c.status].label]));
+  const csv=rows.map(r=>r.map(c=>`"${(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download='woodchuck-linkedin-tracker.csv';a.click();
+}
+
+render();
+</script>
+</body>
+</html>

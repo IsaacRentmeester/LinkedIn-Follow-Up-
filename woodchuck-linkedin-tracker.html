@@ -29,8 +29,12 @@
   .card h2{margin:0 0 4px;font-size:15px;text-transform:uppercase;letter-spacing:.6px;color:var(--wood)}
   .card .sub{margin:0 0 14px;font-size:12px;color:var(--grey)}
   .field label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--grey);margin-bottom:4px}
-  input,select{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:9px;font-size:14px;background:#fff;color:var(--wood-dark);font-family:inherit}
-  input:focus,select:focus{outline:none;border-color:var(--tan);box-shadow:0 0 0 3px rgba(200,169,126,.25)}
+  input,select,textarea{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:9px;font-size:14px;background:#fff;color:var(--wood-dark);font-family:inherit}
+  textarea{resize:vertical;line-height:1.5;min-height:70px}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--tan);box-shadow:0 0 0 3px rgba(200,169,126,.25)}
+  .intake-card{border-color:var(--tan);background:linear-gradient(180deg,#fffdf9,#fbf6ec)}
+  .intake-actions{display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap}
+  .intake-msg{font-size:12px;color:var(--green);font-weight:600}
   button{font-family:inherit;cursor:pointer;border:none;border-radius:9px;font-size:14px;font-weight:600}
   .btn-add{background:var(--wood);color:var(--cream);padding:10px 20px;white-space:nowrap;transition:background .15s}
   .btn-add:hover{background:var(--wood-dark)}
@@ -93,10 +97,22 @@
 <header>
   <h1>🪵 Woodchuck LinkedIn Outreach Tracker</h1>
   <p>Add people or whole companies to prospect — track connections and who's been messaged.</p>
+  <p id="live" style="margin-top:6px;font-size:12px;opacity:.9">🟢 Live</p>
 </header>
 
 <div class="wrap">
   <div class="stats" id="stats"></div>
+
+  <div class="card intake-card">
+    <h2>➕ Add LinkedIn URLs (bulk)</h2>
+    <p class="sub">Paste one or more LinkedIn profile URLs, one per line. They land in your <b>Intake queue</b> below. Then either say <b>"sweep the intake queue"</b> in chat, or hit <b>Copy for Claude</b> and paste them in — Claude pulls each name/company/role, sends a no-note connection request right away, drafts a personalized message, and the daily task auto-sends it the moment they accept.</p>
+    <div class="field"><textarea id="intake-urls" rows="4" placeholder="https://www.linkedin.com/in/jane-doe/&#10;https://www.linkedin.com/in/john-smith/"></textarea></div>
+    <div class="intake-actions">
+      <button class="btn-add" onclick="addIntake()">+ Add to queue</button>
+      <button class="btn-ghost" onclick="copyIntake()">⧉ Copy queue for Claude</button>
+      <span id="intake-msg" class="intake-msg"></span>
+    </div>
+  </div>
 
   <div class="card">
     <h2>Add a person</h2>
@@ -154,7 +170,7 @@
 
   <table id="people-table">
     <thead><tr>
-      <th>Name</th><th class="hide-sm">Company</th><th class="hide-sm">LinkedIn</th><th>Status</th><th></th>
+      <th>Name</th><th class="hide-sm">Company</th><th class="hide-sm">Role / Position</th><th class="hide-sm">LinkedIn</th><th>Status</th><th></th>
     </tr></thead>
     <tbody id="p-body"></tbody>
   </table>
@@ -166,12 +182,20 @@
     <tbody id="c-body"></tbody>
   </table>
 
-  <p class="note">Everything is saved locally in this browser (<code>localStorage</code>). Bookmark this file. Use the status dropdown to move people through <b>Request sent → Connected → Messaged</b>, and companies through <b>Queued → Researching → Done</b>.</p>
+  <table id="intake-table" class="hidden">
+    <thead><tr>
+      <th>#</th><th>LinkedIn URL to process</th><th>Added</th><th></th>
+    </tr></thead>
+    <tbody id="i-body"></tbody>
+  </table>
+
+  <p class="note"><b>Live:</b> keep this tab open — it auto-refreshes every 30s, so people Claude adds and status changes from the daily task appear on their own (no manual reload). It won't refresh while you're typing or picking a status, and you can pause it from the header. Your own status changes are kept and never bumped backwards. Everything is stored locally in this browser (<code>localStorage</code>); the embedded roster in the file is the source of truth.</p>
 </div>
 
 <script>
 const PKEY='woodchuck_li_people_v2';
 const CKEY='woodchuck_li_companies_v2';
+const IKEY='woodchuck_li_intake_v1';
 
 const PSTATUS={
   pending:{label:'Request sent',cls:'st-pending'},
@@ -186,30 +210,93 @@ const CSTATUS={
 };
 
 const SEED_PEOPLE=[
-  {name:'Robert Cordes',company:'Garrison Brothers Distillery',url:'https://www.linkedin.com/in/robertcordes/',status:'pending'},
-  {name:'Mark Borchetta',company:'Big Machine Distillery (fmr EVP)',url:'https://www.linkedin.com/in/markborchetta/',status:'pending'},
-  {name:'Tim Sparapani',company:'Blue Run Spirits / Coors Spirits',url:'https://www.linkedin.com/in/tim-sparapani-0397734/',status:'pending'},
-  {name:'Ryan Beltran',company:'Original Grain',url:'https://www.linkedin.com/in/ryan-beltran/',status:'pending'},
-  {name:'Maegan Dec',company:"Hilliard's Chocolates",url:'https://www.linkedin.com/in/maeganemccarthy/',status:'pending'},
-  {name:'Malte Barnekow',company:'Four Walls Whiskey',url:'https://www.linkedin.com/in/maltebarnekow/',status:'pending'},
-  {name:'Colin Spoelman',company:'Kings County Distillery',url:'https://www.linkedin.com/in/spoelman/',status:'pending'},
-  {name:'Roland Murphy',company:'RGM Watch Co.',url:'https://www.linkedin.com/in/roland-murphy-5298aa41/',status:'pending'},
-  {name:'Anna Bario',company:'Bario Neal',url:'https://www.linkedin.com/in/anna-bario-4742a8234/',status:'pending'},
-  {name:'Reggie Milligan',company:'Mantry.com',url:'https://www.linkedin.com/in/reggie-milligan-b49b842b/',status:'pending'},
-  {name:'Michael Arbanas',company:'Nosotros Tequila (Co-Founder/CFO)',url:'https://www.linkedin.com/in/michael-arbanas-79021196/',status:'pending'},
-  {name:'Ralph Herz',company:'Nosotros Tequila (COO)',url:'https://www.linkedin.com/in/ralphherz/',status:'pending'},
-  {name:'Chip Marks',company:'Nosotros Tequila (Dir. Marketing)',url:'https://www.linkedin.com/in/chipmarks/',status:'pending'},
-  {name:'Bill Bryant',company:'Biltwell Inc. (needs email to send)',url:'',status:'hold'}
+  {name:'Robert Cordes',company:'Garrison Brothers Distillery',role:'Director of Marketing',url:'https://www.linkedin.com/in/robertcordes/',status:'pending'},
+  {name:'Mark Borchetta',company:'Big Machine Distillery',role:'fmr EVP',url:'https://www.linkedin.com/in/markborchetta/',status:'pending'},
+  {name:'Tim Sparapani',company:'Blue Run Spirits / Coors Spirits',role:'',url:'https://www.linkedin.com/in/tim-sparapani-0397734/',status:'messaged'},
+  {name:'Ryan Beltran',company:'Original Grain',role:'Co-Founder & CEO',url:'https://www.linkedin.com/in/ryan-beltran/',status:'pending'},
+  {name:'Maegan Dec',company:"Hilliard's Chocolates",role:'',url:'https://www.linkedin.com/in/maeganemccarthy/',status:'pending'},
+  {name:'Malte Barnekow',company:'Four Walls Whiskey',role:'',url:'https://www.linkedin.com/in/maltebarnekow/',status:'pending'},
+  {name:'Colin Spoelman',company:'Kings County Distillery',role:'Co-Founder & Head Distiller',url:'https://www.linkedin.com/in/spoelman/',status:'pending'},
+  {name:'Roland Murphy',company:'RGM Watch Co.',role:'Founder & Watchmaker',url:'https://www.linkedin.com/in/roland-murphy-5298aa41/',status:'pending'},
+  {name:'Anna Bario',company:'Bario Neal',role:'Co-Founder & Designer',url:'https://www.linkedin.com/in/anna-bario-4742a8234/',status:'pending'},
+  {name:'Reggie Milligan',company:'Mantry.com',role:'Co-Founder',url:'https://www.linkedin.com/in/reggie-milligan-b49b842b/',status:'pending'},
+  {name:'Michael Arbanas',company:'Nosotros Tequila',role:'Co-Founder/CFO',url:'https://www.linkedin.com/in/michael-arbanas-79021196/',status:'pending'},
+  {name:'Ralph Herz',company:'Nosotros Tequila',role:'COO',url:'https://www.linkedin.com/in/ralphherz/',status:'messaged'},
+  {name:'Chip Marks',company:'Nosotros Tequila',role:'Dir. Marketing',url:'https://www.linkedin.com/in/chipmarks/',status:'pending'},
+  {name:'Cameron Weiss',company:'Weiss Watch Company',role:'CEO/Founder',url:'https://www.linkedin.com/in/cameron-weiss-8169843b/',status:'pending'},
+  {name:'Dan Clark',company:'Dan Clark Audio',role:'CEO/Founder',url:'https://www.linkedin.com/in/dan-clark-2ab10/',status:'pending'},
+  {name:'Christopher Allen',company:'Shucked Bourbon',role:'Co-Producer',url:'https://www.linkedin.com/in/chris-allen-hkm/',status:'pending'},
+  {name:'Jen Steuer',company:'Carnaby & Vine',role:'Owner/CEO',url:'https://www.linkedin.com/in/jen-steuer-21393690/',status:'messaged'},
+  {name:'Adelle Archer',company:'Eterneva',role:'Co-CEO/Co-Founder',url:'https://www.linkedin.com/in/adellearcher/',status:'pending'},
+  {name:'Sandra Velasquez',company:'Nopalera',role:'Founder/CEO',url:'https://www.linkedin.com/in/sandraliliavelasquez/',status:'messaged'},
+  {name:'Kirby Kallas-Lewis',company:'OOLA Distillery',role:'Founder/CEO',url:'https://www.linkedin.com/in/kirby-kallas-lewis-9a6555a1/',status:'pending'},
+  {name:'Johnathan Crocker',company:'Frank August',role:'Founder',url:'https://www.linkedin.com/in/johnathan-crocker-0b231518/',status:'pending'},
+  {name:'David Weglarz',company:'StilL 630 Distillery',role:'Owner/Head Distiller',url:'https://www.linkedin.com/in/davidweglarz/',status:'pending'},
+  {name:'JB Woodworth',company:'Dos Hombres Mezcal',role:'Co-CEO',url:'https://www.linkedin.com/in/entrepreneur-food-beverage/',status:'messaged'},
+  {name:'Nic Ashford',company:'Limited Run Games',role:'COO',url:'https://www.linkedin.com/in/nic-ashford/',status:'pending'},
+  {name:'Kristen Wiley',company:'Statusphere',role:'Founder/CEO',url:'https://www.linkedin.com/in/thekristenwiley/',status:'pending'},
+  {name:'Pete Saari',company:'Foreverence',role:'Founder/Owner',url:'https://www.linkedin.com/in/pete-saari-53417a/',status:'connected'},
+  {name:'RT Custer',company:'Vortic Watch Co',role:'CEO',url:'https://www.linkedin.com/in/rtcuster/',status:'pending'},
+  {name:'David Moltz',company:'D.S. & Durga',role:'Founder/Perfumer',url:'https://www.linkedin.com/in/david-moltz-6321484/',status:'pending'},
+  {name:'Kaveh Zamanian',company:'Rabbit Hole Distillery',role:'Founder & Whiskey Maker',url:'https://www.linkedin.com/in/kaveh-zamanian/',status:'pending'},
+  {name:'Justin Crowe',company:'Parting Stone',role:'Founder/CEO',url:'https://www.linkedin.com/in/justindavidcrowe/',status:'pending'},
+  {name:'Andrew Wason',company:'Brush Creek Distillery',role:'Managing Director',url:'https://www.linkedin.com/in/andrew-wason2025/',status:'pending'},
+  {name:'Jonathan Ferrer',company:'Brew Watch Co.',role:'Designer & Founder',url:'https://www.linkedin.com/in/jonathan-ferrer/',status:'pending'},
+  {name:'Todd Olander',company:'Root Shoot Malting',role:'Founder & Farmer',url:'https://www.linkedin.com/in/todd-olander-4a89485/',status:'messaged'},
+  {name:'Phil Riportella',company:'Snif',role:'Co-Founder',url:'https://www.linkedin.com/in/piptherip/',status:'pending'},
+  {name:'Tina Chen Craig',company:'U Beauty',role:'Founder',url:'https://www.linkedin.com/in/bagsnob/',status:'pending'},
+  {name:'Adina Reyter',company:'Adina Reyter',role:'Founder/CEO',url:'https://www.linkedin.com/in/adina-reyter-5407205/',status:'pending'},
+  {name:'Andy Bardon',company:'Wild Common Tequila',role:'Founder',url:'https://www.linkedin.com/in/andy-bardon/',status:'pending'},
+  {name:'Curt Covert',company:'Smirk and Dagger Games',role:'Owner/Publisher',url:'https://www.linkedin.com/in/curt-covert-9505126/',status:'pending'},
+  {name:'Jayson Woodbridge',company:'Hundred Acre',role:'Founder/Winemaker',url:'https://www.linkedin.com/in/jaysonwoodbridge/',status:'pending'},
+  {name:'James Morris',company:'El Bandido Yankee Tequila',role:'Head of Operations',url:'https://www.linkedin.com/in/jamesmorrisofficial/',status:'pending'},
+  {name:'Kirsten Craig',company:'Activate Inc.',role:'Owner',url:'https://www.linkedin.com/in/kirsten-craig-309b5328/',status:'pending'},
+  {name:'Christian Huber',company:"Starlight Distillery / Huber's Orchard & Winery",role:'',url:'https://www.linkedin.com/in/christian-huber-59366a29b/',status:'messaged'},
+  {name:'Steven Lee',company:'DuFrane Watches',role:'Founder',url:'https://www.linkedin.com/in/stevenmichaellee/',status:'pending'},
+  {name:'Jon M. Gibson',company:'iam8bit',role:'Co-Owner',url:'https://www.linkedin.com/in/jon-m-gibson-5296bb38/',status:'pending'},
+  {name:'Mike Tetterton',company:'RD1 Spirits',role:'CEO',url:'https://www.linkedin.com/in/mike-tetterton-04185824/',status:'pending'},
+  {name:'Jonathan Grahm',company:'Compartés Chocolatier',role:'CEO/Founder',url:'https://www.linkedin.com/in/jonathan-grahm-110150a/',status:'pending'},
+  {name:'David Talton Jr.',company:'Level 99 Games',role:'President/Founder',url:'https://www.linkedin.com/in/davidtalton/',status:'pending'},
+  {name:'Kerry Silva Addis',company:'WS Game Company',role:'Owner & COO',url:'https://www.linkedin.com/in/kerry-silva-addis-a053316/',status:'pending'},
+  {name:'Ted Church',company:'Anthem Branding',role:'Founder',url:'https://www.linkedin.com/in/tedchurch/',status:'pending'},
+  {name:'Rishi Prabhu',company:'Bespoke Post',role:'Co-Founder',url:'https://www.linkedin.com/in/rishiprabhu/',status:'pending'},
+  {name:'Matt Conable',company:'William Henry',role:'Founder/Creative Director',url:'https://www.linkedin.com/in/matt-conable-b8186913/',status:'pending'},
+  {name:'Norman Hooten',company:'Hooten Young',role:'President & Cofounder',url:'https://www.linkedin.com/in/norman-hooten-9a1b0511/',status:'messaged'},
+  {name:'Elliott Gillespie',company:'Gold Bar Spirits Company',role:'President & CEO',url:'https://www.linkedin.com/in/elliottgillespie/',status:'pending'},
+  {name:'Aishwarya Iyer',company:'Brightland',role:'Founder/CEO — email-gated, needs email to connect',url:'https://www.linkedin.com/in/aishwarya-iyer-44112a19a/',status:'hold'},
+  {name:'Bill Bryant',company:'Biltwell Inc.',role:'needs email to send',url:'',status:'hold'}
 ];
+
+// status progression — higher = further along. Used so neither the engine
+// nor a manual edit ever knocks someone backwards on an auto-refresh.
+const ORDER={hold:0,pending:1,connected:2,messaged:3};
+function keyOf(p){const u=(p.url||'').trim().toLowerCase().replace(/\/+$/,'');return u?('u:'+u):('n:'+(p.name||'').trim().toLowerCase());}
 
 let people=loadPeople();
 let companies=loadCompanies();
+let intake=loadIntake();
 let activeTab='all';
 
+// The embedded SEED_PEOPLE list is the source of truth (rewritten by Claude and
+// the daily task). We merge it over anything saved locally: new seed people get
+// added, statuses advance to whichever is further along (engine OR your manual
+// change), and people you added by hand in the form are kept.
 function loadPeople(){
-  try{const r=localStorage.getItem(PKEY);if(r)return JSON.parse(r);}catch(e){}
-  const s=SEED_PEOPLE.map((p,i)=>({id:Date.now()+i,...p}));
-  localStorage.setItem(PKEY,JSON.stringify(s));return s;
+  let stored=[];
+  try{const r=localStorage.getItem(PKEY);if(r)stored=JSON.parse(r);}catch(e){}
+  const byKey={};stored.forEach(p=>{byKey[keyOf(p)]=p;});
+  const seedKeys=new Set();
+  const merged=SEED_PEOPLE.map((sp,i)=>{
+    const k=keyOf(sp);seedKeys.add(k);
+    const ex=byKey[k];
+    let status=sp.status;
+    if(ex&&ORDER[ex.status]!==undefined&&ORDER[ex.status]>ORDER[status])status=ex.status;
+    return {id:ex?ex.id:Date.now()+i,name:sp.name,company:sp.company,role:sp.role||'',url:sp.url,status,engine:true};
+  });
+  // keep people you added by hand (not in the seed list)
+  stored.forEach(p=>{if(!seedKeys.has(keyOf(p)))merged.push(p);});
+  localStorage.setItem(PKEY,JSON.stringify(merged));
+  return merged;
 }
 function loadCompanies(){
   try{const r=localStorage.getItem(CKEY);if(r)return JSON.parse(r);}catch(e){}
@@ -217,6 +304,8 @@ function loadCompanies(){
 }
 function savePeople(){localStorage.setItem(PKEY,JSON.stringify(people));}
 function saveCompanies(){localStorage.setItem(CKEY,JSON.stringify(companies));}
+function loadIntake(){try{const r=localStorage.getItem(IKEY);if(r)return JSON.parse(r);}catch(e){}return [];}
+function saveIntake(){localStorage.setItem(IKEY,JSON.stringify(intake));}
 
 function normUrl(u){u=u.trim();if(u&&!/^https?:\/\//i.test(u))u='https://'+u;return u;}
 
@@ -242,6 +331,37 @@ function addCompany(){
   activeTab='companies';render();
 }
 
+// ---- Bulk LinkedIn URL intake ----
+function normLiUrl(u){u=(u||'').trim();if(!u)return '';if(!/^https?:\/\//i.test(u))u='https://'+u;return u.replace(/[)\].,]+$/,'').replace(/\/+$/,'');}
+function intakeMsg(t){const el=document.getElementById('intake-msg');if(!el)return;el.textContent=t;if(t)setTimeout(()=>{if(el.textContent===t)el.textContent='';},4000);}
+function addIntake(){
+  const raw=document.getElementById('intake-urls').value;
+  const lines=raw.split(/[\n,\s]+/).map(normLiUrl).filter(u=>/linkedin\.com\/in\//i.test(u));
+  if(!lines.length){intakeMsg('Paste at least one linkedin.com/in/… URL.');return;}
+  const have=new Set(intake.map(x=>x.url.toLowerCase()));
+  const inRoster=new Set(people.map(p=>(p.url||'').toLowerCase().replace(/\/+$/,'')));
+  let added=0,dupe=0,already=0;
+  lines.forEach(u=>{
+    const k=u.toLowerCase();
+    if(inRoster.has(k)){already++;return;}
+    if(have.has(k)){dupe++;return;}
+    have.add(k);intake.unshift({url:u,added:Date.now()});added++;
+  });
+  saveIntake();document.getElementById('intake-urls').value='';
+  activeTab='intake';render();
+  intakeMsg(`Added ${added}${dupe?`, ${dupe} already queued`:''}${already?`, ${already} already in roster`:''}. Say "sweep the intake queue" or hit Copy.`);
+}
+function copyIntake(){
+  if(!intake.length){intakeMsg('Queue is empty.');return;}
+  const text=intake.map(x=>x.url).join('\n');
+  const done=()=>intakeMsg(`Copied ${intake.length} URL(s) — paste them to Claude.`);
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(done).catch(()=>fallbackCopy(text,done));}
+  else fallbackCopy(text,done);
+}
+function fallbackCopy(text,cb){const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');}catch(e){}document.body.removeChild(ta);cb&&cb();}
+function delI(url){intake=intake.filter(x=>x.url!==url);saveIntake();render();}
+function clearIntake(){if(intake.length&&confirm('Clear the whole intake queue?')){intake=[];saveIntake();render();}}
+
 function setP(id,v){const p=people.find(x=>x.id===id);if(p){p.status=v;savePeople();render();}}
 function setC(id,v){const c=companies.find(x=>x.id===id);if(c){c.status=v;saveCompanies();render();}}
 function delP(id){const p=people.find(x=>x.id===id);if(p&&confirm('Remove '+p.name+'?')){people=people.filter(x=>x.id!==id);savePeople();render();}}
@@ -265,14 +385,30 @@ function renderStats(){
 
 function renderTabs(){
   const c=pcounts();
-  const tabs=[['all','All people',people.length],['pending','Request sent',c.pending],['connected','Connected',c.connected],['messaged','Messaged',c.messaged],['hold','On hold',c.hold],['companies','Companies',companies.length]];
+  const tabs=[['all','All people',people.length],['pending','Request sent',c.pending],['connected','Connected',c.connected],['messaged','Messaged',c.messaged],['hold','On hold',c.hold],['companies','Companies',companies.length],['intake','Intake queue',intake.length]];
   document.getElementById('tabs').innerHTML=tabs.map(([k,l,n])=>`<button class="tab ${activeTab===k?'active':''}" onclick="activeTab='${k}';render()">${l}<span class="count">${n}</span></button>`).join('');
 }
 
 function render(){
   renderStats();renderTabs();
   const q=document.getElementById('search').value.trim().toLowerCase();
-  const pTable=document.getElementById('people-table'),cTable=document.getElementById('co-table');
+  const pTable=document.getElementById('people-table'),cTable=document.getElementById('co-table'),iTable=document.getElementById('intake-table');
+
+  if(activeTab==='intake'){
+    pTable.classList.add('hidden');cTable.classList.add('hidden');iTable.classList.remove('hidden');
+    let list=intake;if(q)list=list.filter(x=>x.url.toLowerCase().includes(q));
+    const b=document.getElementById('i-body');
+    if(!list.length){b.innerHTML=`<tr><td colspan="4"><div class="empty">Queue is empty. Paste LinkedIn URLs above, then say "sweep the intake queue".</div></td></tr>`;return;}
+    b.innerHTML=list.map((x,idx)=>`<tr>
+        <td class="company">${idx+1}</td>
+        <td><a class="li" href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.url.replace(/^https?:\/\//,''))} ↗</a></td>
+        <td class="company hide-sm">${new Date(x.added).toLocaleDateString()}</td>
+        <td class="row-actions"><button class="icon-btn del" title="Remove" onclick="delI('${esc(x.url)}')">🗑</button></td>
+      </tr>`).join('')
+      + `<tr><td colspan="4" style="text-align:right"><button class="btn-ghost" onclick="clearIntake()">Clear queue</button></td></tr>`;
+    return;
+  }
+  iTable.classList.add('hidden');
 
   if(activeTab==='companies'){
     pTable.classList.add('hidden');cTable.classList.remove('hidden');
@@ -296,13 +432,14 @@ function render(){
   let list=people.filter(p=>activeTab==='all'?true:p.status===activeTab);
   if(q)list=list.filter(p=>(p.name+' '+p.company).toLowerCase().includes(q));
   const b=document.getElementById('p-body');
-  if(!list.length){b.innerHTML=`<tr><td colspan="5"><div class="empty">Nobody here yet. Add a person above.</div></td></tr>`;return;}
+  if(!list.length){b.innerHTML=`<tr><td colspan="6"><div class="empty">Nobody here yet. Add a person above.</div></td></tr>`;return;}
   b.innerHTML=list.map(p=>{
     const opts=Object.entries(PSTATUS).map(([k,v])=>`<option value="${k}" ${p.status===k?'selected':''}>${v.label}</option>`).join('');
     const link=p.url?`<a class="li" href="${esc(p.url)}" target="_blank" rel="noopener">Open profile ↗</a>`:'<span style="color:var(--grey);font-size:13px">—</span>';
     return `<tr>
       <td class="name">${esc(p.name)}</td>
       <td class="company hide-sm">${esc(p.company)}</td>
+      <td class="company hide-sm">${esc(p.role)||'<span style="color:var(--grey)">—</span>'}</td>
       <td class="hide-sm">${link}</td>
       <td><select class="status-select ${PSTATUS[p.status].cls}" onchange="setP(${p.id},this.value)">${opts}</select></td>
       <td class="row-actions"><button class="icon-btn del" title="Remove" onclick="delP(${p.id})">🗑</button></td>
@@ -310,15 +447,45 @@ function render(){
 }
 
 function exportCSV(){
-  const rows=[['Type','Name','Company/URL','LinkedIn/Target','Status']];
-  people.forEach(p=>rows.push(['Person',p.name,p.company,p.url,PSTATUS[p.status].label]));
-  companies.forEach(c=>rows.push(['Company',c.name,c.url,c.target,CSTATUS[c.status].label]));
+  const rows=[['Type','Name','Company','Role/Position','LinkedIn/Target','Status']];
+  people.forEach(p=>rows.push(['Person',p.name,p.company,p.role||'',p.url,PSTATUS[p.status].label]));
+  companies.forEach(c=>rows.push(['Company',c.name,c.url,'',c.target,CSTATUS[c.status].label]));
   const csv=rows.map(r=>r.map(c=>`"${(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
   a.download='woodchuck-linkedin-tracker.csv';a.click();
 }
 
+// ---- Live sync: keep this tab current without you touching it ----
+const SYNC_MS=30000;                       // auto-refresh every 30s
+let paused=false;
+
+// preserve which tab, search text and scroll position across auto-refreshes
+function saveUi(){try{sessionStorage.setItem('wc_ui',JSON.stringify({tab:activeTab,q:document.getElementById('search').value,y:window.scrollY,paused}));}catch(e){}}
+(function restoreUi(){try{const u=JSON.parse(sessionStorage.getItem('wc_ui')||'{}');if(u.tab)activeTab=u.tab;if(u.paused)paused=true;window.__q=u.q||'';window.__y=u.y||0;}catch(e){}})();
+window.addEventListener('beforeunload',saveUi);
+
+function fmtTime(d){return d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'});}
+function paintLive(){
+  const el=document.getElementById('live');if(!el)return;
+  el.innerHTML = paused
+    ? `⏸ Paused — <a href="#" onclick="togglePause();return false" style="color:var(--cream);text-decoration:underline">resume live updates</a>`
+    : `🟢 Live — synced ${fmtTime(new Date())}, auto-refreshing every 30s · <a href="#" onclick="togglePause();return false" style="color:var(--cream);text-decoration:underline">pause</a>`;
+}
+function togglePause(){paused=!paused;saveUi();paintLive();}
+
+// don't reload while you're typing in a field or picking a status
+function tick(){
+  if(paused)return;
+  const el=document.activeElement;
+  if(el&&/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName))return;
+  saveUi();location.reload();
+}
+setInterval(tick,SYNC_MS);
+
+if(window.__q)document.getElementById('search').value=window.__q;
 render();
+paintLive();
+if(window.__y)window.scrollTo(0,window.__y);
 </script>
 </body>
 </html>

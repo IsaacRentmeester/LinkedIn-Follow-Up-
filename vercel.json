@@ -1,0 +1,6 @@
+{
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/", "destination": "/woodchuck-linkedin-tracker.html" }
+  ]
+}

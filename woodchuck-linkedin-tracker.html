@@ -79,6 +79,19 @@
   .icon-btn{background:transparent;color:var(--grey);padding:4px 8px;font-size:15px;border-radius:7px}
   .icon-btn:hover{background:var(--grey-bg);color:var(--wood-dark)}
   .del:hover{background:#f7dede;color:#b23b3b}
+  .email-btn{font-size:14px}
+  .email-btn:hover{background:var(--purple-bg);color:var(--purple)}
+
+  .modal-bg{position:fixed;inset:0;background:rgba(40,26,13,.55);display:none;align-items:center;justify-content:center;z-index:200;padding:20px}
+  .modal-bg.show{display:flex}
+  .modal{background:var(--paper);border-radius:16px;max-width:600px;width:100%;box-shadow:var(--shadow);padding:22px 22px 20px;max-height:88vh;overflow:auto}
+  .modal h3{margin:0 0 2px;font-size:18px;color:var(--wood-dark)}
+  .modal .who{font-size:13px;color:var(--grey);margin-bottom:14px}
+  .subj{font-size:13px;font-weight:600;color:var(--wood);background:var(--grey-bg);border:1px solid var(--line);border-radius:9px;padding:9px 12px;margin-bottom:10px}
+  .subj span{font-weight:500;color:var(--grey);margin-right:6px}
+  .email-box{white-space:pre-wrap;font-family:inherit;font-size:14px;line-height:1.55;background:var(--cream);border:1px solid var(--line);border-radius:12px;padding:16px;color:var(--wood-dark)}
+  .modal-actions{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;align-items:center}
+  .copied-note{font-size:13px;font-weight:600;color:var(--green);margin-left:auto}
 
   .empty{text-align:center;padding:44px 20px;color:var(--grey);font-size:14px}
   .note{font-size:12px;color:var(--grey);margin-top:14px}
@@ -96,7 +109,7 @@
 </head>
 <body>
 <header>
-  <h1>🪵 Woodchuck LinkedIn Outreach Tracker</h1>
+  <h1>🪵 Woodchuck Outreach Tracker</h1>
   <p>Add people or whole companies to prospect — track connections and who's been messaged.</p>
   <p id="live" style="margin-top:6px;font-size:12px;opacity:.9">🟢 Live</p>
 </header>
@@ -159,7 +172,7 @@
   </div>
 
   <div class="banner">
-    <b>How prospecting works (Apollo + PhantomBuster style):</b> Adding a company queues it below. Like Apollo, Claude targets by <b>persona</b> — job title + seniority + function — to surface the real decision-makers. Like PhantomBuster, the finding and connecting run on your live, logged-in LinkedIn (a webpage can't do that itself), and the daily scheduled task auto-sends each personalized message the moment someone accepts. Say <b>"work the company queue"</b> and Claude researches each queued company, shows you the decision-makers it found, and adds them to the People list.
+    <b>How it works:</b> Add a person (or drop in a LinkedIn URL), or queue a whole company to prospect. Claude targets by <b>persona</b> — job title + seniority + function — to surface the real decision-makers. For anyone on your People list, hit <b>✉ Email</b> to instantly generate a personalized, ready-to-send Woodchuck pitch built from their company and role, then copy it into your email. Say <b>"work the company queue"</b> and Claude researches each queued company and adds the decision-makers it finds to the People list.
   </div>
 
   <div class="tabs" id="tabs"></div>
@@ -190,7 +203,22 @@
     <tbody id="i-body"></tbody>
   </table>
 
-  <p class="note"><b>Live:</b> keep this tab open — it auto-refreshes every 30s, so people Claude adds and status changes from the daily task appear on their own (no manual reload). It won't refresh while you're typing or picking a status, and you can pause it from the header. Your own status changes are kept and never bumped backwards. Everything is stored locally in this browser (<code>localStorage</code>); the embedded roster in the file is the source of truth.</p>
+  <p class="note"><b>Live:</b> keep this tab open — it auto-refreshes every 30s, so people Claude adds appear on their own (no manual reload). It won't refresh while you're typing or picking a status, and you can pause it from the header. Your own status changes are kept and never bumped backwards. Everything is stored locally in this browser (<code>localStorage</code>); the embedded roster in the file is the source of truth.</p>
+</div>
+
+<div class="modal-bg" id="email-modal" onclick="if(event.target===this)closeEmail()">
+  <div class="modal">
+    <h3>✉ Personalized email</h3>
+    <div class="who" id="em-who"></div>
+    <div class="subj"><span>Subject:</span><span id="em-subj" style="color:var(--wood);font-weight:600"></span></div>
+    <div class="email-box" id="em-body"></div>
+    <div class="modal-actions">
+      <button class="btn-add" onclick="copyEmail()">⧉ Copy email</button>
+      <button class="btn-ghost" onclick="regenEmail()">↻ Regenerate</button>
+      <button class="btn-ghost" onclick="closeEmail()">Close</button>
+      <span class="copied-note" id="em-copied"></span>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -199,9 +227,9 @@ const CKEY='woodchuck_li_companies_v2';
 const IKEY='woodchuck_li_intake_v1';
 
 const PSTATUS={
-  pending:{label:'Request sent',cls:'st-pending'},
-  connected:{label:'Connected',cls:'st-connected'},
-  messaged:{label:'Messaged',cls:'st-messaged'},
+  pending:{label:'To email',cls:'st-pending'},
+  connected:{label:'Replied',cls:'st-connected'},
+  messaged:{label:'Emailed',cls:'st-messaged'},
   hold:{label:'On hold',cls:'st-hold'}
 };
 const CSTATUS={
@@ -475,7 +503,7 @@ function renderStats(){
 
 function renderTabs(){
   const c=pcounts();
-  const tabs=[['all','All people',people.length],['pending','Request sent',c.pending],['connected','Connected',c.connected],['messaged','Messaged',c.messaged],['hold','On hold',c.hold],['companies','Companies',companies.length],['intake','Intake queue',intake.length]];
+  const tabs=[['all','All people',people.length],['pending','To email',c.pending],['connected','Replied',c.connected],['messaged','Emailed',c.messaged],['hold','On hold',c.hold],['companies','Companies',companies.length],['intake','Intake queue',intake.length]];
   document.getElementById('tabs').innerHTML=tabs.map(([k,l,n])=>`<button class="tab ${activeTab===k?'active':''}" onclick="activeTab='${k}';render()">${l}<span class="count">${n}</span></button>`).join('');
 }
 
@@ -513,7 +541,7 @@ function render(){
         <td class="hide-sm">${link}</td>
         <td class="hide-sm company">${esc(c.target)||'<span style="color:var(--grey)">any decision-maker</span>'}</td>
         <td><select class="status-select ${CSTATUS[c.status].cls}" onchange="setC(${c.id},this.value)">${opts}</select></td>
-        <td class="row-actions"><button class="icon-btn del" title="Remove" onclick="delC(${c.id})">🗑</button></td>
+        <td class="row-actions"><button class="icon-btn email-btn" title="Generate email" onclick="openEmailCo(${c.id})">✉</button><button class="icon-btn del" title="Remove" onclick="delC(${c.id})">🗑</button></td>
       </tr>`;}).join('');
     return;
   }
@@ -532,7 +560,7 @@ function render(){
       <td class="company hide-sm">${esc(p.role)||'<span style="color:var(--grey)">—</span>'}</td>
       <td class="hide-sm">${link}</td>
       <td><select class="status-select ${PSTATUS[p.status].cls}" onchange="setP(${p.id},this.value)">${opts}</select></td>
-      <td class="row-actions"><button class="icon-btn del" title="Remove" onclick="delP(${p.id})">🗑</button></td>
+      <td class="row-actions"><button class="icon-btn email-btn" title="Generate email" onclick="openEmail(${p.id})">✉</button><button class="icon-btn del" title="Remove" onclick="delP(${p.id})">🗑</button></td>
     </tr>`;}).join('');
 }
 
@@ -544,6 +572,95 @@ function exportCSV(){
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
   a.download='woodchuck-linkedin-tracker.csv';a.click();
 }
+
+// ---- Personalized email generator ----
+// Builds a short, punchy Woodchuck pitch from the person's name, company and role.
+// Fully client-side so it works for anyone you add, forever.
+let _emCtx=null;            // {name,company,role} currently in the modal
+let _emVariant=0;           // cycled by Regenerate
+
+function firstName(n){n=(n||'').trim();if(!n)return '';return n.split(/\s+/)[0].replace(/[,.]$/,'');}
+
+function companyType(text){
+  text=(text||'').toLowerCase();
+  if(/distiller|distilling|whisk|bourbon|spirit|tequila|mezcal|rum|vodka|gin|winery|\bwine\b|cellars|brewery|brewing|liquor|cocktail/.test(text))return 'spirits';
+  if(/watch|timepiece|horolog/.test(text))return 'watch';
+  if(/jewel|jeweller|jewelry/.test(text))return 'jewelry';
+  if(/chocolate|confection|coffee|roaster|bakery|\bfood|snack|gourmet|candy|tea\b/.test(text))return 'food';
+  if(/cosmetic|beauty|skincare|fragrance|candle|apothecary/.test(text))return 'beauty';
+  if(/cannabis|dispensary|\bcbd\b|hemp/.test(text))return 'cannabis';
+  return 'default';
+}
+
+function genEmail(ctx,v){
+  const first=firstName(ctx.name);
+  const co=(ctx.company||'your brand').trim();
+  const role=(ctx.role||'').toLowerCase();
+  const type=companyType(co+' '+role);
+  const greet=first?('Hi '+first+',') : ('Hi '+(co!=='your brand'?co+' team':'there')+',');
+
+  // company-specific hook (2 variants each so Regenerate reads differently)
+  const hooks={
+    spirits:[`I've been following ${co} and would love to help make your next release feel as premium on the outside as it is in the bottle.`,
+             `${co}'s spirits deserve packaging that lands the moment it's picked up — that's exactly what we do.`],
+    watch:[`${co}'s craftsmanship deserves a presentation to match, and premium wood does that beautifully.`,
+           `I think ${co}'s timepieces would look incredible in custom wood packaging.`],
+    jewelry:[`${co}'s pieces deserve an unboxing that feels as considered as the work itself.`,
+             `Custom wood packaging could make every ${co} piece feel like an occasion.`],
+    food:[`Great packaging could make ${co}'s products pop on the shelf and in every unboxing.`,
+          `I'd love to help ${co}'s products stand out with packaging people actually keep.`],
+    beauty:[`${co}'s products deserve packaging that feels as premium as the brand.`,
+            `Custom wood could give ${co} a shelf-and-unboxing moment that really stands out.`],
+    cannabis:[`Premium wood packaging could set ${co} apart in a category that's all about presentation.`,
+              `I'd love to help ${co} elevate its packaging and gifting.`],
+    default:[`I think there's a great fit for ${co}'s next launch, drop, or gifting push.`,
+             `I'd love to help ${co} stand out with packaging worth keeping.`]
+  };
+  const hook=hooks[type][v%2];
+
+  // optional role-aware nudge
+  let roleLine='';
+  if(/market|brand|growth|social|content|creative|communications/.test(role))roleLine=`Figured this might be right up your alley on the marketing side. `;
+  else if(/sales|account|territory|business development|\bbd\b|revenue|commercial/.test(role))roleLine=`Could be a nice edge for your sales and gifting programs. `;
+  else if(/founder|owner|ceo|coo|cfo|president|chief|\bvp\b|director|head|principal/.test(role))roleLine=`Wanted to put it on your radar directly. `;
+
+  const subjects=[`Premium wood packaging for ${co}`,`${co} × Woodchuck USA — custom packaging`,`A packaging idea for ${co}`];
+  const subject=subjects[v%subjects.length];
+
+  const body=`${greet}
+
+I'm Isaac with Woodchuck USA — we make premium, custom wood packaging with a quick turnaround: influencer boxes, new-drop packaging, kitting, and whatever else you need. ${hook}
+
+${roleLine}Worth a quick chat to see if there's a fit for ${co}?
+
+Isaac Rentmeester
+Woodchuck USA
+irentmee@gmail.com`;
+
+  return {subject,body};
+}
+
+function showEmail(){
+  const {subject,body}=genEmail(_emCtx,_emVariant);
+  document.getElementById('em-who').textContent=[_emCtx.name,_emCtx.role,_emCtx.company].filter(Boolean).join(' · ');
+  document.getElementById('em-subj').textContent=subject;
+  document.getElementById('em-body').textContent=body;
+  document.getElementById('email-modal').classList.add('show');
+  copyEmail(true);   // auto-copy on open
+}
+function openEmail(id){const p=people.find(x=>x.id===id);if(!p)return;_emCtx={name:p.name,company:p.company,role:p.role};_emVariant=0;showEmail();}
+function openEmailCo(id){const c=companies.find(x=>x.id===id);if(!c)return;_emCtx={name:'',company:c.name||'',role:c.target||''};_emVariant=0;showEmail();}
+function regenEmail(){_emVariant++;showEmail();}
+function closeEmail(){document.getElementById('email-modal').classList.remove('show');document.getElementById('em-copied').textContent='';}
+function copyEmail(silent){
+  const {subject,body}=genEmail(_emCtx,_emVariant);
+  const text='Subject: '+subject+'\n\n'+body;
+  const note=document.getElementById('em-copied');
+  const done=()=>{note.textContent='✓ Copied to clipboard';setTimeout(()=>{if(note.textContent.startsWith('✓'))note.textContent='';},2500);};
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(done).catch(()=>fallbackCopy(text,done));}
+  else fallbackCopy(text,done);
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeEmail();});
 
 // ---- Live sync: keep this tab current without you touching it ----
 const SYNC_MS=30000;                       // auto-refresh every 30s
@@ -566,6 +683,8 @@ function togglePause(){paused=!paused;saveUi();paintLive();}
 // don't reload while you're typing in a field or picking a status
 function tick(){
   if(paused)return;
+  const m=document.getElementById('email-modal');
+  if(m&&m.classList.contains('show'))return;   // don't reload while the email modal is open
   const el=document.activeElement;
   if(el&&/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName))return;
   saveUi();location.reload();
